@@ -19,7 +19,7 @@ Project Fetcher is a Rust-based application designed to streamline the process o
 Run using `nix run`
 
 ```bash
-nix run github:/nico-swan-com/git-project-fetcher
+nix run github:/nico-swan-com/git-project-fetcher -- ./projects.json
 
 ```
 
