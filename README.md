@@ -120,7 +120,7 @@ outputs = { self, nixpkgs, home-manager, git-project-updater, ... }@inputs: {
 # In your configuration.nix or a similar file
 { pkgs, inputs, ... }: # Make sure 'inputs' is available via specialArgs
 let
-  gitProjectUpdaterPkg = inputs.k8sServiceScriptFlake.packages.${pkgs.system}.default;
+  gitProjectUpdaterPkg = inputs.git-project-updater.packages.${pkgs.system}.default;
 in
 {
   environment.systemPackages = with pkgs; [
