@@ -100,7 +100,7 @@ inputs = {
   home-manager.url = "github:nix-community/home-manager";
   # ... other inputs ...
 
-  git-project-updater.url = "github:/nico-swan-com/git-project-updater"; # Replace with actual URL
+  git-project-updater.url = "github:/nico-swan-com/git-project-updater";
   git-project-updater.inputs.nixpkgs.follows = "nixpkgs";
 };
 
