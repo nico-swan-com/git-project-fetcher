@@ -2,7 +2,6 @@
 
 <!--toc:start-->
 
-- [Git Project Updater](#git-project-updater)
   - [Overview](#overview)
   - [Features](#features)
   - [File Structure](#file-structure)
