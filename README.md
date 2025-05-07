@@ -10,11 +10,18 @@
   - [Usage](#usage)
   - [Contributing](#contributing)
   - [License](#license)
- <!--toc:end-->
+  <!--toc:end-->
 
 ## Overview
 
 Project Fetcher is a Rust-based application designed to streamline the process of managing multiple Git repositories. It provides functionalities for cloning repositories, checking out branches, and pulling updates efficiently.
+
+Run using `nix run`
+
+```bash
+nix run github:/nico-swan-com/git-project-fetcher
+
+```
 
 ## Features
 
@@ -42,7 +49,6 @@ git-project-fetcher
 
 To set up the project, ensure you have [Nix](https://nixos.org/download.html) installed. You can then use the following commands to enter the development environment:
 The project uses [Devenv](https://devenv.sh/) together with [direnv](https://direnv.net/) to manage the development environment.
-
 
 ## Usage
 
