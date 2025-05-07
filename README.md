@@ -40,8 +40,7 @@ git-project-updater
 
 ## Setup
 
-To set up the project, ensure you have [Nix](https://nixos.org/download.html) installed. You can then use the following commands to enter the development environment:
-The project uses [Devenv](https://devenv.sh/) together with [direnv](https://direnv.net/) to manage the development environment.
+To set up the project, ensure you have [Nix](https://nixos.org/download.html) installed. The project uses [devenv.sh](https://devenv.sh/) together with [direnv](https://direnv.net/) to manage the development environment.
 
 ## Usage
 
@@ -50,6 +49,7 @@ To run the application, execute the following command:
 ```bash
 cargo run -- ./projects.json
 ```
+*See [Nix](#nix) for how to execute the command and install using nix* 
 
 Make sure to configure your `ProjectConfig` with the necessary parameters before running the application.
 
