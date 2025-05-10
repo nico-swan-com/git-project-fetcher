@@ -1,3 +1,5 @@
+#github
+.secrets
 # Devenv
 .devenv*
 devenv.local.nix

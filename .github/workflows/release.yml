@@ -1,7 +1,7 @@
 name: Release Build
 
 permissions:
-  contents: write # Required for creating releases
+  contents: write
   packages: read
   actions: read
 
@@ -29,8 +29,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: ${{ github.ref_name }} # Using ref_name for cleaner tag handling
+          release_name: Release ${{ github.ref_name }}
           draft: false
           prerelease: true # Change to false for production releases
 
@@ -38,7 +38,6 @@ jobs:
     needs: create_release
     permissions:
       contents: write
-    environment: production # Reference the environment containing the secrets
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -60,12 +59,17 @@ jobs:
             experimental-features = nix-command flakes
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set Environment Variables
+        run: echo "CACHIX_AUTH_TOKEN=${{ secrets.CACHIX_AUTH_TOKEN }}" >> $GITHUB_ENV
+
       - name: Cachix Cache
         uses: cachix/cachix-action@v14
-        if: ${{ secrets.CACHIX_AUTH_TOKEN && secrets.CACHIX_AUTH_TOKEN != '' }}
+        if: env.CACHIX_AUTH_TOKEN != ''
+        env:
+          CACHIX_AUTH_TOKEN: ${{ env.CACHIX_AUTH_TOKEN }}
         with:
           name: nico-swan-com
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
 
       - name: Build with Nix
         run: |
