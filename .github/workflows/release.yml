@@ -66,10 +66,10 @@ jobs:
 
       - name: Cachix Cache
         uses: cachix/cachix-action@v14
-        if: ${{ length(secrets.CACHIX_AUTH_TOKEN) > 0 }}
+        if: secrets.CACHIX_AUTH_TOKEN != '' # Check if the secret is defined and not empty
         with:
           name: nico-swan-com
-          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Build with Nix
         run: |
