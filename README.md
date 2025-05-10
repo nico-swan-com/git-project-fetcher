@@ -1,15 +1,17 @@
 # Git Project Updater
 
+[![Release Build](https://github.com/nico-swan-com/git-project-updater/actions/workflows/release.yml/badge.svg)](https://github.com/nico-swan-com/git-project-updater/actions/workflows/release.yml)
+
 <!--toc:start-->
 
-  - [Overview](#overview)
-  - [Features](#features)
-  - [File Structure](#file-structure)
-  - [Setup](#setup)
-  - [Usage](#usage)
-  - [Nix](#nix)
-  - [Contributing](#contributing)
-  - [License](#license)
+- [Overview](#overview)
+- [Features](#features)
+- [File Structure](#file-structure)
+- [Setup](#setup)
+- [Usage](#usage)
+- [Nix](#nix)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Overview
 
@@ -48,7 +50,8 @@ To run the application, execute the following command:
 ```bash
 cargo run -- ./projects.json
 ```
-*See [Nix](#nix) for how to execute the command and install using nix* 
+
+_See [Nix](#nix) for how to execute the command and install using nix_
 
 Make sure to configure your `ProjectConfig` with the necessary parameters before running the application.
 
@@ -105,7 +108,7 @@ inputs = {
 
 outputs = { self, nixpkgs, home-manager, git-project-updater, ... }@inputs: {
   nixosConfigurations.yourHostname = nixpkgs.lib.nixosSystem {
-    system = "x86_64-linux"; 
+    system = "x86_64-linux";
     specialArgs = { inherit inputs; };
     modules = [
       ./configuration.nix
