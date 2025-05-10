@@ -99,8 +99,8 @@ jobs:
         run: |
           asset_suffix=""
           case "${{ matrix.nix_system }}" in
-            "x86_64-linux") asset_suffix="x86_64-unknown-linux-gnu" ;;  # "unknown" is explicitly included here.
-            "aarch64-linux") asset_suffix="aarch64-unknown-linux-gnu" ;;
+            "x86_64-linux") asset_suffix="x86_64-linux-gnu" ;;  # "unknown" is explicitly included here.
+            "aarch64-linux") asset_suffix="aarch64-ulinux-gnu" ;;
             "x86_64-darwin") asset_suffix="x86_64-apple-darwin" ;;
             "aarch64-darwin") asset_suffix="aarch64-apple-darwin" ;;
             *) echo "Unknown nix_system: ${{ matrix.nix_system }}" && exit 1 ;;
@@ -123,10 +123,10 @@ jobs:
             echo "ASSET_CONTENT_TYPE=application/gzip" >> $GITHUB_ENV
           fi
 
-      # Uncomment the following step if you wish to push new build outputs to Cachix.
-      # - name: Push Build to Cachix
-      #   run: |
-      #     cachix push nico-swan-com result-${{ matrix.nix_system }}
+      # Push new build outputs to Cachix.
+      - name: Push Build to Cachix
+        run: |
+          cachix push nico-swan-com result-${{ matrix.nix_system }}
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
