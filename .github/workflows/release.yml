@@ -5,6 +5,10 @@ on:
     tags:
       - "v*" # Trigger on tags like v0.1.0, v1.0, etc.
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true # or false
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
