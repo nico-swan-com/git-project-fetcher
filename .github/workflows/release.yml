@@ -46,7 +46,7 @@ jobs:
           - x86_64-darwin
           - aarch64-darwin
 
-    runs-on: ${{ contains(matrix.nix_system, '-darwin') && 'macos-latest' || 'ubuntu-latest' }}
+    runs-on: ${{ contains(matrix.nix_system, '-darwin') && 'macos-latest' || contains(matrix.nix_system, 'aarch64') && 'ubuntu-arm64' || 'ubuntu-latest' }}
 
     steps:
       - name: Checkout repository
@@ -57,7 +57,7 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-unstable
           extra_nix_config: |
-            experimental-features = nix-command flakes configurable-impure-env
+            experimental-features = nix-command flakes configurable-impure-env auto-allocate-uids
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
 
       - name: Set Environment Variables
@@ -75,7 +75,7 @@ jobs:
       - name: Build with Nix
         run: |
           set -e # Stop workflow on error
-          nix build .#packages.${{ matrix.nix_system }}.default -o result-${{ matrix.nix_system }}
+          nix build --option system ${{ matrix.nix_system }} .#packages.${{ matrix.nix_system }}.default -o result-${{ matrix.nix_system }}
           echo "NIX_SYSTEM=${{ matrix.nix_system }}" >> $GITHUB_ENV
           echo "BINARY_PATH=result-${{ matrix.nix_system }}/bin/git-project-updater" >> $GITHUB_ENV
           echo "RELEASE_NAME=git-project-updater-${{ matrix.nix_system }}" >> $GITHUB_ENV
