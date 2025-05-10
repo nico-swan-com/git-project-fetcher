@@ -1,108 +1,20 @@
 name: Release Build
 
 permissions:
-  contents: write
+  contents: write # Required for creating releases
   packages: read
   actions: read
 
 on:
   push:
     tags:
-      - "v*" # Trigger on tags like v0.1.0, v1.0, etc.
+      - "v[0-9]+.[0-9]+.[0-9]+" # Trigger on semantic version tags
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true # or false
+  cancel-in-progress: true
 
 jobs:
-  build-and-release:
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        # Define the systems you want to build for
-        # These should match the systems supported by your flake-utils and Nixpkgs
-        nix_system:
-          - x86_64-linux
-          - aarch64-linux
-          - x86_64-darwin
-          - aarch64-darwin
-        # You can add include rules for specific runner OS for specific nix_system if needed
-        # include:
-        #   - nix_system: x86_64-darwin
-        #     os: macos-latest # Or a specific macOS version runner
-        #   - nix_system: aarch64-darwin
-        #     os: macos-latest # Needs a runner that can cross-compile or an M1 runner
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Nix
-        uses: cachix/install-nix-action@v25 # Or your preferred Nix installer action
-        with:
-          nix_path: nixpkgs=channel:nixos-unstable
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-
-      # Use Cachix to speed up builds by caching Nix derivations
-      - name: Cachix Cache
-        uses: cachix/cachix-action@v14
-        if: ${{ length(secrets.CACHIX_AUTH_TOKEN) > 0 }}
-        with:
-          name: nico-swan-com
-          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
-
-      - name: Build with Nix
-        run: |
-          nix build .#packages.${{ matrix.nix_system }}.default -o result-${{ matrix.nix_system }}
-          echo "NIX_SYSTEM=${{ matrix.nix_system }}" >> $GITHUB_ENV
-          echo "BINARY_PATH=result-${{ matrix.nix_system }}/bin/git-project-updater" >> $GITHUB_ENV
-          echo "RELEASE_NAME=git-project-updater-${{ matrix.nix_system }}" >> $GITHUB_ENV
-
-      - name: Prepare Release Asset Name
-        id: asset_name
-        run: |
-          asset_suffix=""
-          if [[ "${{ matrix.nix_system }}" == "x86_64-linux" ]]; then
-            asset_suffix="x86_64-unknown-linux-gnu"
-          elif [[ "${{ matrix.nix_system }}" == "aarch64-linux" ]]; then
-            asset_suffix="aarch64-unknown-linux-gnu"
-          elif [[ "${{ matrix.nix_system }}" == "x86_64-darwin" ]]; then
-            asset_suffix="x86_64-apple-darwin"
-          elif [[ "${{ matrix.nix_system }}" == "aarch64-darwin" ]]; then
-            asset_suffix="aarch64-apple-darwin"
-          fi
-          echo "NAME=git-project-updater-${{ github.ref_name }}-${asset_suffix}" >> $GITHUB_OUTPUT
-          # For macOS, it's common to zip the binary
-          if [[ "${{ matrix.nix_system }}" == *"-darwin"* ]]; then
-            zip -j "${{ env.RELEASE_NAME }}.zip" "${{ env.BINARY_PATH }}"
-            echo "UPLOAD_PATH=${{ env.RELEASE_NAME }}.zip" >> $GITHUB_ENV
-            echo "ASSET_CONTENT_TYPE=application/zip" >> $GITHUB_ENV
-          else
-            # For Linux, often a tar.gz is preferred, or just the binary
-            tar -czvf "${{ env.RELEASE_NAME }}.tar.gz" -C "$(dirname "${{ env.BINARY_PATH }}")" "$(basename "${{ env.BINARY_PATH }}")"
-            echo "UPLOAD_PATH=${{ env.RELEASE_NAME }}.tar.gz" >> $GITHUB_ENV
-            echo "ASSET_CONTENT_TYPE=application/gzip" >> $GITHUB_ENV
-            # If you prefer to upload the raw binary for Linux:
-            # cp "${{ env.BINARY_PATH }}" "${{ env.RELEASE_NAME }}"
-            # echo "UPLOAD_PATH=${{ env.RELEASE_NAME }}" >> $GITHUB_ENV
-            # echo "ASSET_CONTENT_TYPE=application/octet-stream" >> $GITHUB_ENV
-          fi
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ${{ env.UPLOAD_PATH }}
-          asset_name: ${{ steps.asset_name.outputs.NAME }}$(if [[ "${{ matrix.nix_system }}" == *"-darwin"* ]]; then echo ".zip"; else echo ".tar.gz"; fi)
-          asset_content_type: ${{ env.ASSET_CONTENT_TYPE }}
-
-  # Create a GitHub Release if it doesn't exist for the tag
   create_release:
     permissions:
       contents: write
@@ -120,4 +32,81 @@ jobs:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
           draft: false
-          prerelease: true # Set to false once v1
+          prerelease: true # Change to false for production releases
+
+  build-and-release:
+    needs: create_release # Ensure this runs after the release job
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        nix_system:
+          - x86_64-linux
+          - aarch64-linux
+          - x86_64-darwin
+          - aarch64-darwin
+        include:
+          - nix_system: x86_64-darwin
+            os: macos-latest
+          - nix_system: aarch64-darwin
+            os: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v25
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cachix Cache
+        uses: cachix/cachix-action@v14
+        if: ${{ length(secrets.CACHIX_AUTH_TOKEN) > 0 }}
+        with:
+          name: nico-swan-com
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+
+      - name: Build with Nix
+        run: |
+          set -e # Stop workflow on error
+          nix build .#packages.${{ matrix.nix_system }}.default -o result-${{ matrix.nix_system }}
+          echo "NIX_SYSTEM=${{ matrix.nix_system }}" >> $GITHUB_ENV
+          echo "BINARY_PATH=result-${{ matrix.nix_system }}/bin/git-project-updater" >> $GITHUB_ENV
+          echo "RELEASE_NAME=git-project-updater-${{ matrix.nix_system }}" >> $GITHUB_ENV
+
+      - name: Prepare Release Asset Name
+        id: asset_name
+        run: |
+          asset_suffix=""
+          case "${{ matrix.nix_system }}" in
+            "x86_64-linux") asset_suffix="x86_64-unknown-linux-gnu" ;;
+            "aarch64-linux") asset_suffix="aarch64-unknown-linux-gnu" ;;
+            "x86_64-darwin") asset_suffix="x86_64-apple-darwin" ;;
+            "aarch64-darwin") asset_suffix="aarch64-apple-darwin" ;;
+            *) echo "Unknown nix_system: ${{ matrix.nix_system }}" && exit 1 ;;
+          esac
+          echo "NAME=git-project-updater-${{ github.ref_name }}-${asset_suffix}" >> $GITHUB_OUTPUT
+          if [[ "${{ matrix.nix_system }}" == *"-darwin"* ]]; then
+            zip -j "${{ env.RELEASE_NAME }}.zip" "${{ env.BINARY_PATH }}"
+            echo "UPLOAD_PATH=${{ env.RELEASE_NAME }}.zip" >> $GITHUB_ENV
+            echo "ASSET_CONTENT_TYPE=application/zip" >> $GITHUB_ENV
+          else
+            tar -czvf "${{ env.RELEASE_NAME }}.tar.gz" -C "$(dirname "${{ env.BINARY_PATH }}")" "$(basename "${{ env.BINARY_PATH }}")"
+            echo "UPLOAD_PATH=${{ env.RELEASE_NAME }}.tar.gz" >> $GITHUB_ENV
+            echo "ASSET_CONTENT_TYPE=application/gzip" >> $GITHUB_ENV
+          fi
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ${{ env.UPLOAD_PATH }}
+          asset_name: ${{ steps.asset_name.outputs.NAME }}$(if [[ "${{ matrix.nix_system }}" == *"-darwin"* ]]; then echo ".zip"; else echo ".tar.gz"; fi)
+          asset_content_type: ${{ env.ASSET_CONTENT_TYPE }}
