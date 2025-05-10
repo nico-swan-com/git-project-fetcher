@@ -43,14 +43,12 @@
 
         # Build the actual crate itself, reusing the dependency
         # artifacts from above.
-        git-project-updater-crate = craneLib.buildPackage (commonArgs // {
-          inherit cargoArtifacts;
-        });
-      in
-      {
+        git-project-updater =
+          craneLib.buildPackage (commonArgs // { inherit cargoArtifacts; });
+      in {
         checks = {
           # Build the crate as part of `nix flake check` for convenience
-          inherit git-project-updater-crate;
+          inherit git-project-updater;
 
           # Run clippy (and deny all warnings) on the crate source,
           # again, reusing the dependency artifacts from above.
@@ -58,40 +56,34 @@
           # Note that this is done as a separate derivation so that
           # we can block the CI if there are issues here, but not
           # prevent downstream consumers from building our crate by itself.
-          git-project-updater-crate-clippy = craneLib.cargoClippy (commonArgs // {
+          git-project-updater-clippy = craneLib.cargoClippy (commonArgs // {
             inherit cargoArtifacts;
             cargoClippyExtraArgs = "--all-targets -- --deny warnings";
           });
 
-          git-project-updater-crate-doc = craneLib.cargoDoc (commonArgs // {
-            inherit cargoArtifacts;
-          });
+          git-project-updater-doc =
+            craneLib.cargoDoc (commonArgs // { inherit cargoArtifacts; });
 
           # Check formatting
-          git-project-updater-crate-fmt = craneLib.cargoFmt {
-            inherit src;
-          };
+          git-project-updater-fmt = craneLib.cargoFmt { inherit src; };
 
-          git-project-updater-crate-toml-fmt = craneLib.taploFmt {
+          git-project-updater-toml-fmt = craneLib.taploFmt {
             src = pkgs.lib.sources.sourceFilesBySuffices src [ ".toml" ];
             # taplo arguments can be further customized below as needed
             # taploExtraArgs = "--config ./taplo.toml";
           };
 
           # Audit dependencies
-          git-project-updater-crate-audit = craneLib.cargoAudit {
-            inherit src advisory-db;
-          };
+          git-project-updater-audit =
+            craneLib.cargoAudit { inherit src advisory-db; };
 
           # Audit licenses
-          git-project-updater-crate-deny = craneLib.cargoDeny {
-            inherit src;
-          };
+          git-project-updater-deny = craneLib.cargoDeny { inherit src; };
 
           # Run tests with cargo-nextest
-          # Consider setting `doCheck = false` on `git-project-updater-crate` if you do not want
+          # Consider setting `doCheck = false` on `git-project-updater` if you do not want
           # the tests to run twice
-          git-project-updater-crate-nextest = craneLib.cargoNextest (commonArgs // {
+          git-project-updater-nextest = craneLib.cargoNextest (commonArgs // {
             inherit cargoArtifacts;
             partitions = 1;
             partitionType = "count";
@@ -99,13 +91,9 @@
           });
         };
 
-        packages = {
-          default = git-project-updater-crate;
-        };
+        packages = { default = git-project-updater; };
 
-        apps.default = flake-utils.lib.mkApp {
-          drv = git-project-updater-crate;
-        };
+        apps.default = flake-utils.lib.mkApp { drv = git-project-updater; };
 
         devShells.default = craneLib.devShell {
           # Inherit inputs from checks.
