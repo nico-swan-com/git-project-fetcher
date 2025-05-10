@@ -1,4 +1,4 @@
-name: Release Build
+iname: Release Build
 
 permissions:
   contents: write
@@ -46,7 +46,7 @@ jobs:
           - nix_system: x86_64-linux
             runner: ubuntu-latest
           - nix_system: aarch64-linux
-            runner: ubuntu-arm64 # Use this if available or consider self-hosted runners
+            runner: ubuntu-24.04-arm
           - nix_system: x86_64-darwin
             runner: macos-latest
           - nix_system: aarch64-darwin
@@ -99,7 +99,7 @@ jobs:
         run: |
           asset_suffix=""
           case "${{ matrix.nix_system }}" in
-            "x86_64-linux") asset_suffix="x86_64-unknown-linux-gnu" ;;
+            "x86_64-linux") asset_suffix="x86_64-unknown-linux-gnu" ;;  # "unknown" is explicitly included here.
             "aarch64-linux") asset_suffix="aarch64-unknown-linux-gnu" ;;
             "x86_64-darwin") asset_suffix="x86_64-apple-darwin" ;;
             "aarch64-darwin") asset_suffix="aarch64-apple-darwin" ;;
@@ -117,7 +117,6 @@ jobs:
             tar -czvf "${ASSET_NAME}" -C result-${{ matrix.nix_system }} bin/git-project-updater
           fi
           echo "UPLOAD_PATH=${ASSET_NAME}" >> $GITHUB_ENV
-          # Set asset content type based on the archive format
           if [ "${{ env.EXT }}" = ".zip" ]; then
             echo "ASSET_CONTENT_TYPE=application/zip" >> $GITHUB_ENV
           else
