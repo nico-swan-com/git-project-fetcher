@@ -8,7 +8,7 @@ permissions:
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+" # Trigger on semantic version tags
+      - "v[0-9]+\\.[0-9]+\\.[0-9]+" # Trigger on semantic version tags
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   create_release:
+    name: Create GitHub Release
     permissions:
       contents: write
     if: startsWith(github.ref, 'refs/tags/')
@@ -32,24 +33,28 @@ jobs:
           tag_name: ${{ github.ref_name }}
           release_name: Release ${{ github.ref_name }}
           draft: false
-          prerelease: true # Change to false for production releases
+          prerelease: true # Set to false for production releases
 
   build-and-release:
+    name: Build and Upload Release Asset
     needs: create_release
     permissions:
       contents: write
     strategy:
       matrix:
-        nix_system:
-          - x86_64-linux
-          - aarch64-linux
-          - x86_64-darwin
-          - aarch64-darwin
-
-    runs-on: ${{ contains(matrix.nix_system, '-darwin') && 'macos-latest' || contains(matrix.nix_system, 'aarch64') && 'ubuntu-arm64' || 'ubuntu-latest' }}
+        include:
+          - nix_system: x86_64-linux
+            runner: ubuntu-latest
+          - nix_system: aarch64-linux
+            runner: ubuntu-arm64 # Use this if available or consider self-hosted runners
+          - nix_system: x86_64-darwin
+            runner: macos-latest
+          - nix_system: aarch64-darwin
+            runner: macos-latest
+    runs-on: ${{ matrix.runner }}
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Install Nix
@@ -74,11 +79,20 @@ jobs:
 
       - name: Build with Nix
         run: |
-          set -e # Stop workflow on error
+          set -e
           nix build --option system ${{ matrix.nix_system }} .#packages.${{ matrix.nix_system }}.default -o result-${{ matrix.nix_system }}
           echo "NIX_SYSTEM=${{ matrix.nix_system }}" >> $GITHUB_ENV
           echo "BINARY_PATH=result-${{ matrix.nix_system }}/bin/git-project-updater" >> $GITHUB_ENV
           echo "RELEASE_NAME=git-project-updater-${{ matrix.nix_system }}" >> $GITHUB_ENV
+
+      - name: Determine File Extension
+        id: file_ext
+        run: |
+          if [[ "${{ matrix.nix_system }}" == *"-darwin"* ]]; then
+            echo "EXT=.zip" >> $GITHUB_ENV
+          else
+            echo "EXT=.tar.gz" >> $GITHUB_ENV
+          fi
 
       - name: Prepare Release Asset Name
         id: asset_name
@@ -92,15 +106,28 @@ jobs:
             *) echo "Unknown nix_system: ${{ matrix.nix_system }}" && exit 1 ;;
           esac
           echo "NAME=git-project-updater-${{ github.ref_name }}-${asset_suffix}" >> $GITHUB_OUTPUT
-          if [[ "${{ matrix.nix_system }}" == *"-darwin"* ]]; then
-            zip -j "${{ env.RELEASE_NAME }}.zip" "${{ env.BINARY_PATH }}"
-            echo "UPLOAD_PATH=${{ env.RELEASE_NAME }}.zip" >> $GITHUB_ENV
+
+      - name: Package Artifact
+        run: |
+          ASSET_NAME="${{ steps.asset_name.outputs.NAME }}${{ env.EXT }}"
+          echo "Packaging binary as ${ASSET_NAME}"
+          if [ "${{ env.EXT }}" = ".zip" ]; then
+            zip -j "${ASSET_NAME}" result-${{ matrix.nix_system }}/bin/git-project-updater
+          else
+            tar -czvf "${ASSET_NAME}" -C result-${{ matrix.nix_system }} bin/git-project-updater
+          fi
+          echo "UPLOAD_PATH=${ASSET_NAME}" >> $GITHUB_ENV
+          # Set asset content type based on the archive format
+          if [ "${{ env.EXT }}" = ".zip" ]; then
             echo "ASSET_CONTENT_TYPE=application/zip" >> $GITHUB_ENV
           else
-            tar -czvf "${{ env.RELEASE_NAME }}.tar.gz" -C "$(dirname "${{ env.BINARY_PATH }}")" "$(basename "${{ env.BINARY_PATH }}")"
-            echo "UPLOAD_PATH=${{ env.RELEASE_NAME }}.tar.gz" >> $GITHUB_ENV
             echo "ASSET_CONTENT_TYPE=application/gzip" >> $GITHUB_ENV
           fi
+
+      # Uncomment the following step if you wish to push new build outputs to Cachix.
+      # - name: Push Build to Cachix
+      #   run: |
+      #     cachix push nico-swan-com result-${{ matrix.nix_system }}
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
@@ -109,5 +136,5 @@ jobs:
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: ${{ env.UPLOAD_PATH }}
-          asset_name: ${{ steps.asset_name.outputs.NAME }}$(if [[ "${{ matrix.nix_system }}" == *"-darwin"* ]]; then echo ".zip"; else echo ".tar.gz"; fi)
+          asset_name: ${{ steps.asset_name.outputs.NAME }}${{ env.EXT }}
           asset_content_type: ${{ env.ASSET_CONTENT_TYPE }}
