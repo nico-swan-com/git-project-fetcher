@@ -39,7 +39,7 @@ jobs:
       # Use Cachix to speed up builds by caching Nix derivations
       - name: Cachix Cache
         uses: cachix/cachix-action@v14
-        if: ${{ secrets.CACHIX_AUTH_TOKEN != '' }}
+        if: ${{ length(secrets.CACHIX_AUTH_TOKEN) > 0 }}
         with:
           name: nico-swan-com
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
