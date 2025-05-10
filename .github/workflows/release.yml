@@ -35,9 +35,10 @@ jobs:
           prerelease: true # Change to false for production releases
 
   build-and-release:
-    needs: create_release # Ensure this runs after the release job
+    needs: create_release
     permissions:
       contents: write
+    environment: production # Reference the environment containing the secrets
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -46,11 +47,6 @@ jobs:
           - aarch64-linux
           - x86_64-darwin
           - aarch64-darwin
-        include:
-          - nix_system: x86_64-darwin
-            os: macos-latest
-          - nix_system: aarch64-darwin
-            os: macos-latest
 
     steps:
       - name: Checkout repository
@@ -66,7 +62,7 @@ jobs:
 
       - name: Cachix Cache
         uses: cachix/cachix-action@v14
-        if: secrets.CACHIX_AUTH_TOKEN != '' # Check if the secret is defined and not empty
+        if: ${{ secrets.CACHIX_AUTH_TOKEN && secrets.CACHIX_AUTH_TOKEN != '' }}
         with:
           name: nico-swan-com
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
