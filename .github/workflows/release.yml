@@ -1,5 +1,10 @@
 name: Release Build
 
+permissions:
+  contents: write
+  packages: read
+  actions: read
+
 on:
   push:
     tags:
