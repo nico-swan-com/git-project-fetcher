@@ -1,4 +1,4 @@
-iname: Release Build
+name: Release Build
 
 permissions:
   contents: write
